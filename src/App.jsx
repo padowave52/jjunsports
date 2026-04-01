@@ -12,8 +12,9 @@ const SAME_DAY_BLOCK_MINUTES = 5;
 const SITE_TEXT = {
   eyebrow: "쭌스포츠 스트링 예약",
   customerTitle: "라켓 스트링 예약 페이지",
+  adminTitle: "관리자 페이지",
   heroDesc:
-    "당일 예약은 바로 작업, \n 맡김 예약은 방문일 기준 다음날 오후 수령으로 운영",
+    "당일 예약은 바로 작업, 맡김 예약은 방문일 기준 다음날 오후 수령으로 운영",
   opDayLabel: "영업시간안내",
   opDayValue: "월~토 10:00~18:00 (일요일 휴무)",
   lunchLabel: "점심시간",
@@ -21,7 +22,7 @@ const SITE_TEXT = {
   guide1: "영업시간: 월~토 10:00~18:00 (일요일 휴무)",
   guide2: "점심시간: 12:00~13:00 예약 불가",
   guide3: "당일 예약은 현재 시각 기준 지난 시간과 시작 5분 전부터 자동 마감됩니다.",
-  guide4: "맡김 예약은 방문일 기준 일요일제외 다음날 오후수령 (작업완료 문자받고 수령)",
+  guide4: "맡김 예약은 방문일 기준 일요일 제외 다음날 오후 수령 (작업완료 문자받고 수령)",
 };
 
 function pad(n) {
@@ -39,6 +40,14 @@ function addDays(dateStr, days) {
   const date = new Date(`${dateStr}T00:00:00`);
   date.setDate(date.getDate() + days);
   return formatDate(date);
+}
+
+function getNextPickupDate(dateStr) {
+  let nextDate = addDays(dateStr, 1);
+  while (isSunday(nextDate)) {
+    nextDate = addDays(nextDate, 1);
+  }
+  return nextDate;
 }
 
 function getDayName(dateStr) {
@@ -171,6 +180,7 @@ function App() {
     type: "sameDay",
     date: today,
     time: "10:00",
+    quantity: 1,
   });
 
   const [adminDate, setAdminDate] = useState(today);
@@ -189,7 +199,8 @@ function App() {
   }, [data]);
 
   const isAdminPage = route === "#/admin";
-  const pickupDate = form.type === "dropOff" ? addDays(form.date, 1) : null;
+  const pickupDate =
+    form.type === "dropOff" ? getNextPickupDate(form.date) : null;
 
   const activeBookings = useMemo(() => {
     return data.bookings.filter((b) => b.status !== "cancelled");
@@ -236,6 +247,11 @@ function App() {
       return;
     }
 
+    if (form.type === "dropOff" && Number(form.quantity) < 1) {
+      alert("맡김 개수를 확인해주세요.");
+      return;
+    }
+
     const status = getSlotStatus(form.date, form.time);
     if (status !== "예약 가능") {
       alert(`선택한 시간은 현재 ${status} 상태입니다.`);
@@ -249,7 +265,8 @@ function App() {
       type: form.type,
       date: form.date,
       time: form.time,
-      pickupDate: form.type === "dropOff" ? addDays(form.date, 1) : "",
+      quantity: form.type === "dropOff" ? Number(form.quantity) || 1 : 1,
+      pickupDate: form.type === "dropOff" ? getNextPickupDate(form.date) : "",
       status: "pending",
     };
 
@@ -266,6 +283,7 @@ function App() {
       type: "sameDay",
       date: today,
       time: "10:00",
+      quantity: 1,
     });
   }
 
@@ -312,7 +330,7 @@ function App() {
 
   function getApproveMessage(booking) {
     if (booking.type === "dropOff") {
-      return `[쭌스포츠] 예약이 승인되었습니다. 방문일시: ${booking.date} ${booking.time}, 수령 예정일: ${booking.pickupDate} 입니다.`;
+      return `[쭌스포츠] 예약이 승인되었습니다. 방문일시: ${booking.date} ${booking.time}, 맡김 수량: ${booking.quantity}개, 수령 예정일: ${booking.pickupDate} 입니다.`;
     }
     return `[쭌스포츠] 예약이 승인되었습니다. 방문일시: ${booking.date} ${booking.time} 입니다.`;
   }
@@ -378,7 +396,7 @@ function App() {
                   <button
                     type="button"
                     className={form.type === "sameDay" ? "type-btn active" : "type-btn"}
-                    onClick={() => setForm((prev) => ({ ...prev, type: "sameDay" }))}
+                    onClick={() => setForm((prev) => ({ ...prev, type: "sameDay", quantity: 1 }))}
                   >
                     당일 예약
                   </button>
@@ -392,6 +410,23 @@ function App() {
                   </button>
                 </div>
               </div>
+
+              {form.type === "dropOff" && (
+                <div>
+                  <label>맡기는 라켓 개수</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={form.quantity}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        quantity: Number(e.target.value) || 1,
+                      }))
+                    }
+                  />
+                </div>
+              )}
 
               <div className="form-row">
                 <div>
@@ -427,6 +462,9 @@ function App() {
                 <p><strong>선택 날짜:</strong> {form.date} ({getDayName(form.date)})</p>
                 <p><strong>선택 시간:</strong> {form.time}</p>
                 <p><strong>상태:</strong> {getSlotStatus(form.date, form.time)}</p>
+                {form.type === "dropOff" && (
+                  <p><strong>맡김 개수:</strong> {form.quantity}개</p>
+                )}
                 {pickupDate && (
                   <p><strong>맡김 예약 수령 예정일:</strong> {pickupDate}</p>
                 )}
@@ -591,7 +629,10 @@ function App() {
                             {booking.date} {booking.time}
                           </p>
                           {booking.type === "dropOff" && (
-                            <p>수령 예정일: {booking.pickupDate}</p>
+                            <>
+                              <p>맡김 개수: {booking.quantity}개</p>
+                              <p>수령 예정일: {booking.pickupDate}</p>
+                            </>
                           )}
                           <p>상태: {booking.status}</p>
                         </div>
