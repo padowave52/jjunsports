@@ -144,10 +144,6 @@ function Header({ isAdminPage }) {
           <span>{SITE_TEXT.opDayValue}</span>
         </div>
         <div className="info-card">
-          <strong>{SITE_TEXT.opTimeLabel}</strong>
-          <span>{SITE_TEXT.opTimeValue}</span>
-        </div>
-        <div className="info-card">
           <strong>{SITE_TEXT.lunchLabel}</strong>
           <span>{SITE_TEXT.lunchValue}</span>
         </div>
