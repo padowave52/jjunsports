@@ -13,11 +13,9 @@ const SITE_TEXT = {
   eyebrow: "쭌스포츠 스트링 예약",
   customerTitle: "라켓 스트링 예약 페이지",
   heroDesc:
-    "당일 예약은 바로 작업, 맡김 예약은 방문일 기준 다음날 수령으로 운영합니다.",
-  opDayLabel: "운영일",
-  opDayValue: "월요일 ~ 토요일",
-  opTimeLabel: "운영시간",
-  opTimeValue: "10:00 ~ 18:00",
+    "당일 예약은 바로 작업, \n 맡김 예약은 방문일 기준 다음날 오후 수령으로 운영",
+  opDayLabel: "영업시간안내",
+  opDayValue: "월~토 10:00~18:00 (일요일 휴무)",
   lunchLabel: "점심시간",
   lunchValue: "12:00 ~ 13:00",
   guide1: "영업시간: 월~토 10:00~18:00 (일요일 휴무)",
@@ -465,7 +463,7 @@ function App() {
             </div>
 
             <div className="day-summary">
-              현재 선택 날짜 예약 수: {dayBookings.length}건 / {data.settings.dayLimit}건
+              현재 선택 날짜 예약 수: {dayBookings.length}건
             </div>
           </section>
         </main>

@@ -119,6 +119,11 @@ h2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  min-width: 0;
+}
+
+.form-row > div {
+  min-width: 0;
 }
 
 label {
@@ -131,11 +136,21 @@ label {
 input,
 select {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 13px 14px;
   border: 1px solid #d1d5db;
   border-radius: 14px;
   font-size: 15px;
   background: white;
+}
+
+input[type="date"] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .type-buttons {
