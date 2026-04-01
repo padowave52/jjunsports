@@ -1,10 +1,30 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
-const STORAGE_KEY = "junsports_booking_v2";
+const STORAGE_KEY = "junsports_booking_v3";
+const ADMIN_PASSWORD = "jjun5418";
+
 const OPEN_HOUR = 10;
 const CLOSE_HOUR = 18;
 const LUNCH_HOUR = 12;
+const SAME_DAY_BLOCK_MINUTES = 5;
+
+const SITE_TEXT = {
+  eyebrow: "쭌스포츠 스트링 예약",
+  customerTitle: "라켓 스트링 예약 페이지",
+  heroDesc:
+    "당일 예약은 바로 작업, 맡김 예약은 방문일 기준 다음날 수령으로 운영합니다.",
+  opDayLabel: "운영일",
+  opDayValue: "월요일 ~ 토요일",
+  opTimeLabel: "운영시간",
+  opTimeValue: "10:00 ~ 18:00",
+  lunchLabel: "점심시간",
+  lunchValue: "12:00 ~ 13:00",
+  guide1: "영업시간: 월~토 10:00~18:00 (일요일 휴무)",
+  guide2: "점심시간: 12:00~13:00 예약 불가",
+  guide3: "당일 예약은 현재 시각 기준 지난 시간과 시작 5분 전부터 자동 마감됩니다.",
+  guide4: "맡김 예약은 방문일 기준 일요일제외 다음날 오후수령 (작업완료 문자받고 수령)",
+};
 
 function pad(n) {
   return String(n).padStart(2, "0");
@@ -59,6 +79,7 @@ function loadData() {
         },
       };
     }
+
     const parsed = JSON.parse(raw);
     return {
       bookings: parsed.bookings || [],
@@ -86,50 +107,69 @@ function saveData(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-function Header() {
-  const isAdmin = window.location.hash === "#/admin";
+function getNowInfo() {
+  const now = new Date();
+  return {
+    now,
+    today: formatDate(now),
+  };
+}
+
+function getSlotDateTime(dateStr, timeStr) {
+  return new Date(`${dateStr}T${timeStr}:00`);
+}
+
+function isPastOrClosingSoon(dateStr, timeStr) {
+  const { now, today } = getNowInfo();
+
+  if (dateStr !== today) return false;
+
+  const slotDate = getSlotDateTime(dateStr, timeStr);
+  const diffMs = slotDate.getTime() - now.getTime();
+  const diffMin = diffMs / 60000;
+
+  return diffMin <= SAME_DAY_BLOCK_MINUTES;
+}
+
+function Header({ isAdminPage }) {
   return (
     <header className="hero">
       <div className="hero-text">
-        <p className="eyebrow">쭌스포츠 스트링 예약</p>
-        <h1>{isAdmin ? "관리자 페이지" : "라켓 스트링 예약 페이지"}</h1>
-        <p className="hero-desc">
-          당일 예약은 바로 작업, 맡김 예약은 방문일 기준 다음날 수령으로
-          운영합니다.
-        </p>
+        <p className="eyebrow">{SITE_TEXT.eyebrow}</p>
+        <h1>{isAdminPage ? SITE_TEXT.adminTitle : SITE_TEXT.customerTitle}</h1>
+        <p className="hero-desc">{SITE_TEXT.heroDesc}</p>
       </div>
 
       <div className="hero-info">
         <div className="info-card">
-          <strong>운영일</strong>
-          <span>월요일 ~ 토요일</span>
+          <strong>{SITE_TEXT.opDayLabel}</strong>
+          <span>{SITE_TEXT.opDayValue}</span>
         </div>
         <div className="info-card">
-          <strong>운영시간</strong>
-          <span>10:00 ~ 18:00</span>
+          <strong>{SITE_TEXT.opTimeLabel}</strong>
+          <span>{SITE_TEXT.opTimeValue}</span>
         </div>
         <div className="info-card">
-          <strong>점심시간</strong>
-          <span>12:00 ~ 13:00</span>
+          <strong>{SITE_TEXT.lunchLabel}</strong>
+          <span>{SITE_TEXT.lunchValue}</span>
         </div>
       </div>
     </header>
   );
 }
 
-function NavBar() {
-  return (
-    <div className="top-nav">
-      <a href="#/" className="nav-link">고객 예약 페이지</a>
-      <a href="#/admin" className="nav-link">관리자 페이지</a>
-    </div>
-  );
+function CustomerTopOnly() {
+  return null;
+}
+
+function AdminTopOnly() {
+  return null;
 }
 
 function App() {
-  const today = formatDate(new Date());
   const [route, setRoute] = useState(window.location.hash || "#/");
   const [data, setData] = useState(loadData());
+  const { today } = getNowInfo();
 
   const [form, setForm] = useState({
     name: "",
@@ -142,7 +182,7 @@ function App() {
   const [adminDate, setAdminDate] = useState(today);
   const [copied, setCopied] = useState("");
   const [adminUnlocked, setAdminUnlocked] = useState(false);
-  const [adminPin, setAdminPin] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
 
   useEffect(() => {
     const onHashChange = () => setRoute(window.location.hash || "#/");
@@ -154,6 +194,7 @@ function App() {
     saveData(data);
   }, [data]);
 
+  const isAdminPage = route === "#/admin";
   const pickupDate = form.type === "dropOff" ? addDays(form.date, 1) : null;
 
   const activeBookings = useMemo(() => {
@@ -172,8 +213,14 @@ function App() {
     if (isSunday(date)) return "휴무";
     if (data.closedDates.includes(date)) return "휴무";
     if ((data.blockedSlots[date] || []).includes(time)) return "관리자 차단";
+
+    if (isPastOrClosingSoon(date, time)) {
+      return "마감";
+    }
+
     if (getDayCount(date) >= Number(data.settings.dayLimit)) return "마감";
     if (getSlotCount(date, time) >= Number(data.settings.slotLimit)) return "마감";
+
     return "예약 가능";
   }
 
@@ -184,8 +231,14 @@ function App() {
       alert("이름을 입력해주세요.");
       return;
     }
+
     if (!form.phone.trim()) {
       alert("전화번호를 입력해주세요.");
+      return;
+    }
+
+    if (form.phone.length < 10) {
+      alert("전화번호를 정확히 입력해주세요.");
       return;
     }
 
@@ -284,12 +337,10 @@ function App() {
     return aa.localeCompare(bb);
   });
 
-  const isAdminPage = route === "#/admin";
-
   return (
     <div className="page">
-      <NavBar />
-      <Header />
+      {isAdminPage ? <AdminTopOnly /> : <CustomerTopOnly />}
+      {!isAdminPage && <Header isAdminPage={isAdminPage} />}
 
       {!isAdminPage ? (
         <main className="main-grid">
@@ -314,11 +365,15 @@ function App() {
                   <label>전화번호</label>
                   <input
                     type="text"
+                    inputMode="numeric"
                     value={form.phone}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, phone: e.target.value }))
-                    }
-                    placeholder="010-0000-0000"
+                    onChange={(e) => {
+                      const onlyNumbers = e.target.value
+                        .replace(/[^0-9]/g, "")
+                        .slice(0, 11);
+                      setForm((prev) => ({ ...prev, phone: onlyNumbers }));
+                    }}
+                    placeholder="01012345678"
                   />
                 </div>
               </div>
@@ -384,11 +439,12 @@ function App() {
               </div>
 
               <div className="guide-box">
-                <p>영업시간: 월~토 10:00~18:00 (일요일 휴무)</p>
-                <p>점심시간: 12:00~13:00 예약 불가</p>
+                <p>{SITE_TEXT.guide1}</p>
+                <p>{SITE_TEXT.guide2}</p>
                 <p>슬롯당 기본 예약 가능 수: {data.settings.slotLimit}건</p>
                 <p>하루 총 예약 가능 수: {data.settings.dayLimit}건</p>
-                <p>맡김 예약은 방문일 기준 다음날 수령 예정입니다.</p>
+                <p>{SITE_TEXT.guide3}</p>
+                <p>{SITE_TEXT.guide4}</p>
               </div>
 
               <button className="submit-btn" type="submit">
@@ -422,15 +478,15 @@ function App() {
               <label>관리자 비밀번호</label>
               <input
                 type="password"
-                value={adminPin}
-                onChange={(e) => setAdminPin(e.target.value)}
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
                 placeholder="비밀번호 입력"
               />
               <button
                 className="submit-btn"
                 type="button"
                 onClick={() => {
-                  if (adminPin === "1234") {
+                  if (adminPassword === ADMIN_PASSWORD) {
                     setAdminUnlocked(true);
                   } else {
                     alert("비밀번호가 올바르지 않습니다.");
@@ -439,7 +495,6 @@ function App() {
               >
                 관리자 페이지 열기
               </button>
-              <p className="small-guide">현재 기본 비밀번호는 1234 입니다. 나중에 변경 가능.</p>
             </div>
           ) : (
             <div className="admin-layout">

@@ -278,6 +278,53 @@ select {
   color: #6b7280;
 }
 
+.top-nav {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.nav-link {
+  text-decoration: none;
+  background: #111827;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.lock-text,
+.small-guide {
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.admin-lock-card {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.admin-section-single {
+  margin-top: 8px;
+}
+
+.admin-layout {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 20px;
+}
+
+@media (max-width: 1024px) {
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 1024px) {
   .hero,
   .main-grid,
